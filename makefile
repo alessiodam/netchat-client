@@ -2,9 +2,9 @@
 # Makefile Options
 # ----------------------------
 
-NAME = lwIPDEMO
+NAME = NETCHAT
 ICON = icon.png
-DESCRIPTION = lwIP Networking Stack DEMO
+DESCRIPTION = Official NETCHAT Client
 
 APP_NAME = lwIPDEMO
 APP_VERSION = 0
