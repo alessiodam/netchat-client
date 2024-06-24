@@ -2,9 +2,6 @@
 	path = app_tools
 	url = https://github.com/CE-Programming/app_tools.git
 
-[submodule "netchat-lib"]
-	path = src/netchat-lib
-	url = https://github.com/tkbstudios/netchat-lib.git
 [submodule "src/netchat-lib"]
 	path = src/netchat-lib
 	url = https://github.com/tkbstudios/netchat-lib
