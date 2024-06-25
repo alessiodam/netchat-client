@@ -61,11 +61,3 @@ jobs:
           file: bin/netchat-client.zip
           asset_name: netchat-client.zip
           tag: ${{ github.ref }}
-      
-      - name: Set final commit status
-        uses: myrotvorets/set-commit-status-action@master
-        if: always()
-        with:
-          sha: ${{ steps.comment-branch.outputs.head_sha }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          status: ${{ job.status }}
