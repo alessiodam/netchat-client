@@ -233,16 +233,8 @@ void generate_random_string(char *str, size_t length)
     str[length] = '\0';
 }
 
-static void http_get_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
-    lock_due_to_http = false;
-    if (p == NULL) {
-        altcp_close(pcb);
-        return;
-    }
-
+static void http_get_recv(struct pbuf *p, err_t err) {
     printf("HTTP rcv:\n%.*s", p->len, (char *)p->payload);
-    altcp_recved(pcb, p->len);
-    pbuf_free(p);
 }
 
 int main(void)
@@ -300,18 +292,22 @@ int main(void)
     }
     printf("DHCP completed\n");
 
-    // printf("Testing HTTP GET...\n");
-    // http_request(HTTP_GET, ethif, default_server.host, 80, "/", "", "", 4096, http_get_recv);
-    // printf("Waiting for HTTP response...\n");
-    // lock_due_to_http = true;
-    // while (lock_due_to_http)
-    // {
-    //     key = os_GetCSC();
-    //     if (key == sk_Clear) {
-    //         break;
-    //     }
-    //     handle_all_events();
-    // }
+    printf("Testing HTTP GET...\n");
+    if (http_request(HTTP_GET, ethif, default_server.host, 80, "/", "", "", 1024, http_get_recv) != ERR_OK)
+    {
+        printf("HTTP GET failed\n");
+        msleep(1000);
+        goto exit;
+    }
+    printf("Waiting for HTTP response...\n");
+    while (1)
+    {
+        key = os_GetCSC();
+        if (key == sk_Clear) {
+            break;
+        }
+        handle_all_events();
+    }
 
     printf("Connecting to %s:%d\n", default_server.host, default_server.port);
     netchat_init(ethif, default_server, message_received_callback);
