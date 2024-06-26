@@ -6,3 +6,8 @@
 	path = src/netchat-lib
 	url = https://github.com/tkbstudios/netchat-lib
 	branch = main
+
+[submodule "src/http-client"]
+	path = src/http-client
+	url = https://github.com/tkbstudios/lwIP-CE-HTTP-Client
+	branch = main

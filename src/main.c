@@ -21,6 +21,7 @@
 #include "drivers/usb-ethernet.h"
 
 #include "netchat-lib/netchat.h"
+#include "http-client/http-client.h"
 
 #define MAX_INPUT_LENGTH 64
 #define RANDOM_STRING_LENGTH 256
@@ -41,6 +42,7 @@ struct netif *ethif = NULL;
 err_t tcp_connect_callback(void *arg, struct altcp_pcb *tpcb, err_t err);
 
 bool run_main = false;
+bool lock_due_to_http = false;
 
 // This is the official NETCHAT server located at netchat.tkbstudios.com
 // If you want to use your own server, set it here.
@@ -65,6 +67,7 @@ static void newline(void)
     else
         gfx_SetTextXY(2, gfx_GetTextY() + 10);
 }
+
 void outchar(char c)
 {
     if (c == '\n')
@@ -83,6 +86,15 @@ void outchar(char c)
         }
         gfx_PrintChar(c);
     }
+}
+
+void reset_cursor_position() {
+    gfx_SetTextXY(2, gfx_GetTextY() + 10);
+}
+
+void clear_input_buffer() {
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF);
 }
 
 void ethif_status_callback_fn(struct netif *netif)
@@ -107,6 +119,7 @@ void exit_funcs(void)
 
 void message_received_callback(IncomingMessage msg)
 {
+    newline();
     printf("[%lu] %s: %s\n", msg.timestamp, msg.sender, msg.message);
     return;
 }
@@ -114,7 +127,7 @@ void message_received_callback(IncomingMessage msg)
 void handle_all_events()
 {
     usb_HandleEvents();       // usb events
-    sys_check_timeouts();     // lwIP timers/event callbacks=
+    sys_check_timeouts();     // lwIP timers/event callbacks
 }
 
 void display_mode_indicators()
@@ -167,6 +180,7 @@ void get_text_input(char *placeholder, char *input, size_t max_length)
             if (string_length > 0)
             {
                 input[string_length] = '\0';
+                clear_input_buffer();
                 return;
             }
         }
@@ -209,11 +223,6 @@ void get_text_input(char *placeholder, char *input, size_t max_length)
     }
 }
 
-void get_username(char *username)
-{
-    get_text_input("Enter your username: ", username, MAX_INPUT_LENGTH);
-}
-
 void generate_random_string(char *str, size_t length)
 {
     static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -222,6 +231,18 @@ void generate_random_string(char *str, size_t length)
         str[i] = charset[rand() % (sizeof(charset) - 1)];
     }
     str[length] = '\0';
+}
+
+static void http_get_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
+    lock_due_to_http = false;
+    if (p == NULL) {
+        altcp_close(pcb);
+        return;
+    }
+
+    printf("HTTP rcv:\n%.*s", p->len, (char *)p->payload);
+    altcp_recved(pcb, p->len);
+    pbuf_free(p);
 }
 
 int main(void)
@@ -238,7 +259,7 @@ int main(void)
     newline();
     gfx_SetTextXY(2, LCD_HEIGHT - 30);
 
-    get_username(username);
+    get_text_input("Enter your username: ", username, MAX_INPUT_LENGTH);
     printf("Welcome, %s\n", username);
 
     lwip_init();
@@ -277,6 +298,20 @@ int main(void)
         }
         handle_all_events();
     }
+    printf("DHCP completed\n");
+
+    // printf("Testing HTTP GET...\n");
+    // http_request(HTTP_GET, ethif, default_server.host, 80, "/", "", "", 4096, http_get_recv);
+    // printf("Waiting for HTTP response...\n");
+    // lock_due_to_http = true;
+    // while (lock_due_to_http)
+    // {
+    //     key = os_GetCSC();
+    //     if (key == sk_Clear) {
+    //         break;
+    //     }
+    //     handle_all_events();
+    // }
 
     printf("Connecting to %s:%d\n", default_server.host, default_server.port);
     netchat_init(ethif, default_server, message_received_callback);
@@ -328,6 +363,8 @@ int main(void)
         }
 
         key = os_GetCSC();
+        handle_all_events();
+
         if (key == sk_Clear)
         {
             run_main = false;
@@ -340,11 +377,13 @@ int main(void)
                 OutgoingMessage msg;
                 msg.recipient = "global";
                 msg.message = chat_string;
-                netchat_send(&msg);
+                if (netchat_send(&msg) != NETCHAT_OK)
+                {
+                    printf("Failed to send message\n");
+                }
                 display_input_box("", "Press enter to send a message", true);
             }
         }
-        handle_all_events();
     }
     goto exit;
 exit:
