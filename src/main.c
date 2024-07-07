@@ -10,7 +10,6 @@
 #include <sys/timers.h>
 
 #include "lwip/init.h"
-#include "lwip/sys.h"
 #include "lwip/timeouts.h"
 #include "lwip/netif.h"
 
@@ -67,7 +66,6 @@ static void newline(void)
     else
         gfx_SetTextXY(2, gfx_GetTextY() + 10);
 }
-
 void outchar(char c)
 {
     if (c == '\n')
