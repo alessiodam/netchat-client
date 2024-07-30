@@ -291,7 +291,7 @@ int main(void)
     printf("DHCP completed\n");
 
     printf("Testing HTTP GET...\n");
-    if (http_request(HTTP_GET, ethif, default_server.host, 80, "/", "", "", 1024, http_get_recv) != ERR_OK)
+    if (http_request(HTTP_GET, default_server.host, 80, "/", "", "", 1024, http_get_recv) != ERR_OK)
     {
         printf("HTTP GET failed\n");
         msleep(1000);
